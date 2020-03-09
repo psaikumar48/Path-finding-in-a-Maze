@@ -67,11 +67,7 @@ def f1(start,ip,block):
         return []
     else:
         return f3(start,[],A)
-    
-    
-    
-    
-    
+
 mloop=True
 while mloop:
     screen = pygame.display.set_mode((x_Window_size,y_Window_size+55))
