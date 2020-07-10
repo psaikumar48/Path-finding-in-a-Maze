@@ -1,124 +1,108 @@
-import pandas as pd
 import pygame
-# M*w>=340
-M,N=40,30
-w,h=20,20
-x_Window_size=(M+1)*w
-y_Window_size=(N+1)*h
+import sys
+import time
 pygame.init()
-def show(x,y,colour,boundary_size):
-    pygame.draw.rect(screen,colour, (x*w,y*h,w,h),boundary_size)
-    pygame.display.update()
-    
-def text_objects(text,font,fc):
-    textSurface = font.render(text,True,fc)
-    return textSurface, textSurface.get_rect()
-
-def mousepress(msg,x,y,w,h,ac,ic,fc,fs):
-    mouse=pygame.mouse.get_pos()
-    if x+w>=mouse[0]>=x and y+h>=mouse[1]>=y:
-        pygame.draw.rect(screen,ac,((x,y,w,h)),0)
+pygame.font.init()
+M,N,grid_size,font_size,font_style=60,30,20,16,'C:\\WINDOWS\\Fonts\\HPSimplified_Rg.ttf'
+sys.setrecursionlimit(M*N+100)
+grids=[(i,j) for i in range(M) for j in range(N)]
+font=pygame.font.Font(font_style,font_size)
+h=font.render('mcvbnm,',True,(0,0,0)).get_height()*1.2
+def path_finding_function1(lst,values=[1],n=0):
+    if n<len(lst):
+        (x,y)=lst[n]
+        for i in [(x,y-1),(x+1,y),(x,y+1),(x-1,y)]:
+            if i in grids and i not in lst and i not in blocks:
+                lst.append(i)
+                values.append(values[n]+1)
+        n+=1
+        return path_finding_function1(lst,values,n)
     else:
-        pygame.draw.rect(screen,ic,((x,y,w,h)),0)
+        return lst,values
+def path_finding_function2(op):
+    point=op[-1]
+    value=values[points.index(point)] if point in points else 0
+    if value>1:
+        (x,y)=point
+        for l in [(x,y-1),(x+1,y),(x,y+1),(x-1,y)]:
+            if l in points and values[points.index(l)]==value-1:
+                op.append(l)
+                break
+        return path_finding_function2(op)
+    else:
+        return [] if value==0 else op
+def main_path_finding(start,end):
+    global points,values
+    points,values=path_finding_function1(lst=[end],values=[1],n=0)
+    return path_finding_function2(op=[start])
+
+def mousepress(msg,x,y,font_colour,active_colour,inactive_colour):
     pygame.font.init()
-    smallText=pygame.font.Font('freesansbold.ttf',fs)
-    textSurf, textRect=text_objects(msg,smallText,fc)
-    textRect.center=(x+(w/2),y+(h/2))
-    screen.blit(textSurf, textRect)
-    pygame.display.update()
-
-def f2(ip):
-    opl=(ip[0],ip[1]-1)
-    opr=(ip[0],ip[1]+1)
-    opt=(ip[0]-1,ip[1])
-    opb=(ip[0]+1,ip[1])
-    ip=[opl,opr,opt,opb]
-    op=[]
-    for st in ip:
-        if 0<=st[0]<=M and 0<=st[1]<=N:
-            op.append(st)
-    return op
-def f3(end,op,A):
-    op.append(end)
-    steps=A.Steps[A[A.Cordinates==end].index.tolist()[0]]
-    if steps==1:
-        return op
+    font=pygame.font.Font(font_style,font_size)
+    text=font.render(msg,True,font_colour)
+    w,h=text.get_width(),text.get_height()
+    if (5*x-2*w)/5 <=position[0]<= (5*x+2*w)/5 and (5*y-2*h)/5 <= position[1]<= (5*y+2*h)/5:
+        pygame.draw.rect(screen,active_colour,((x-w/2-w/10,y-h/2-h/10,w+w/5,h+h/5)),0)
     else:
-        for i in f2(end):
-            isteps=A.Steps[A[A.Cordinates==i].index.tolist()[0]]
-            if isteps==steps-1:
-                return f3(i,op,A)
-                break           
-def f1(start,ip,block):
-    step_count={'Cordinates':[ip],'Steps':1}
-    A=pd.DataFrame(step_count)
-    try:
-        for j in range((M+1)*(N+1)):
-            ip=A.Cordinates[j]
-            for i in f2(ip):
-                steps=A.Steps[A[A.Cordinates==ip].index.tolist()[0]]
-                if  not(i in block) and sum(A.Cordinates==i)==0 and steps != 0:
-                    A=A.append({'Cordinates' :i ,'Steps' :steps+1 } , ignore_index=True)
-                elif i in block and sum(A.Cordinates==i)==0:
-                    A=A.append({'Cordinates' :i ,'Steps' : 0 } , ignore_index=True)
-    except KeyError:
-        pass
-    if sum(A.Cordinates==start)==0:
-        return []
-    else:
-        return f3(start,[],A)
+        pygame.draw.rect(screen,inactive_colour,((x-w/2-w/10,y-h/2-h/10,w+w/5,h+h/5)),0)
+    screen.blit(text,(x-w/ 2,y-h/2))
+    return ((5*x-2*w)/5,(5*x+2*w)/5,(5*y-2*h)/5,(5*y+2*h)/5)
 
 mloop=True
 while mloop:
-    screen = pygame.display.set_mode((x_Window_size,y_Window_size+55))
+    screen = pygame.display.set_mode((M*grid_size,int(N*grid_size+4*h)))
     pygame.display.set_caption('Path finding')
-    screen.fill((0,0,100))
-    pygame.draw.rect(screen,(255,255,255), (0,(N+1)*h,x_Window_size,60),0)
-    pygame.display.update()
-    for i in range(M+1):
-        for j in range(N+1):
-            show(i,j,(255,0,0),1)
-    block=[]
-    point=[]
+    [pygame.draw.rect(screen,(255,0,0), (_[0]*grid_size,_[1]*grid_size,grid_size,grid_size),1) for _ in grids]
+    points_lst,blocks,path,Note,start_time,start_point=[],[],[],'Distance',time.time(),(0,0)
     loop=True
     while loop:
+        pygame.display.update()
+        position = pygame.mouse.get_pos()
+        cordinates=(int(position[0]//grid_size),int(position[1]//grid_size))
         ev=pygame.event.get()
-        mousepress('Go!',x_Window_size-100,5+(N+1)*h,80,20,(255,0,0),(200,0,0),(255,255,255),15)
-        mousepress('Refresh',x_Window_size-100,30+(N+1)*h,80,20,(0,255,0),(0,200,0),(255,255,255),15)
-        mousepress('Start/End points : Right click ',0,5+(N+1)*h,250,20,(255,255,255),(255,255,255),(255,0,0),17)
-        mousepress('Obstacles : Left click',0,30+(N+1)*h,250,20,(255,255,255),(255,255,255),(255,0,0),17)
         for event in ev:
-            if event.type == pygame.QUIT:
+            pygame.draw.rect(screen,(0,0,100), (0,N*grid_size,M*grid_size,4*h))
+            mousepress('Start/End points : Double click',int(0.25*M*grid_size),int(N*grid_size+0.8*h),(255,255,255),(0,0,100),(0,0,100))
+            mousepress('To give obstacles : Single click',int(0.25*M*grid_size),int(N*grid_size+2*h),(255,255,255),(0,0,100),(0,0,100))
+            mousepress('To clear blocks : Left click',int(0.25*M*grid_size),int(N*grid_size+3.2*h),(255,255,255),(0,0,100),(0,0,100))
+            mousepress(Note,int(0.75*M*grid_size),int(N*grid_size+0.8*h),(255,255,255),(0,0,100),(0,0,100))
+            GL=mousepress('      Go!!     ',int(0.75*M*grid_size),int(N*grid_size+2*h),(0,0,255),(200,200,200),(255,255,255))
+            RL=mousepress(' Refresh ',int(0.75*M*grid_size),int(N*grid_size+3.2*h),(0,0,255),(200,200,200),(255,255,255))
+            if pygame.mouse.get_pressed()[0] and cordinates[0]<M and cordinates[1]<N:
+                end_point,end_time=cordinates,time.time()
+                if 0.15 < (end_time-start_time) < 0.3 and start_point==end_point and len(points_lst)<2 and cordinates not in points_lst:
+                    pygame.draw.rect(screen,(255,255,255), (cordinates[0]*grid_size,cordinates[1]*grid_size,grid_size,grid_size))
+                    points_lst.append(cordinates)
+                    if cordinates in blocks:
+                        blocks.remove(cordinates)
+                elif cordinates not in blocks:
+                    pygame.draw.rect(screen,(0,255,0), (cordinates[0]*grid_size,cordinates[1]*grid_size,grid_size,grid_size))
+                    blocks.append(cordinates)
+                    if cordinates in points_lst:
+                        points_lst.remove(cordinates)
+                start_point,start_time=end_point,end_time
+            elif pygame.mouse.get_pressed()[2] and cordinates[0]<M and cordinates[1]<N and cordinates in blocks+points_lst+path:
+                pygame.draw.rect(screen,(0,0,0), (cordinates[0]*grid_size,cordinates[1]*grid_size,grid_size,grid_size))
+                pygame.draw.rect(screen,(255,0,0),(cordinates[0]*grid_size,cordinates[1]*grid_size,grid_size,grid_size),1)
+                if cordinates in points_lst:
+                    points_lst.remove(cordinates)
+                elif cordinates in path:
+                    path.remove(cordinates)
+                else:
+                    blocks.remove(cordinates)
+            elif GL[0] <=position[0]<= GL[1] and GL[2] <= position[1]<= GL[3]  and pygame.mouse.get_pressed()[0] and len(points_lst)==2:
+                [pygame.draw.rect(screen,(0,0,0), (_[0]*grid_size,_[1]*grid_size,grid_size,grid_size)) for _ in path if _ not in blocks]
+                [pygame.draw.rect(screen,(255,0,0),(_[0]*grid_size,_[1]*grid_size,grid_size,grid_size),1) for _ in path if _ not in blocks]
+                path=main_path_finding(points_lst[0],points_lst[1])
+                Note=f' {len(path)-2} blocks' if path else 'No path found'
+                if not path: break 
+                path=path[1:-1]
+                [pygame.draw.rect(screen,(0,0,255), (_[0]*grid_size,_[1]*grid_size,grid_size,grid_size)) for _ in path]
+                [pygame.draw.rect(screen,(255,255,255), (_[0]*grid_size,_[1]*grid_size,grid_size,grid_size),1) for _ in path]
+            elif RL[0] <=position[0]<= RL[1] and RL[2] <= position[1]<= RL[3]  and pygame.mouse.get_pressed()[0]:
                 pygame.quit()
                 loop=False
-                mloop=False
-            elif pygame.mouse.get_pressed()[0]:
-                pos = pygame.mouse.get_pos()
-                x,y=int(pos[0]//w),int(pos[1]//h)
-                if x<M+1 and y<N+1:
-                    block.append((x,y))
-                    show(x,y,(255,255,0),0)
-                elif x_Window_size-20 >= pos[0] >= x_Window_size-100 and (N+1)*h+25 >= pos[1] >=(N+1)*h+5 and len(point) >=2:
-                    mousepress('processing...',x_Window_size-100,5+(N+1)*h,80,20,(255,0,0),(200,0,0),(255,255,255),12)
-                    if len(f1(point[0],point[1],block)) != 0:
-                        lst=f1(point[0],point[1],block)
-                        lst.pop(0)
-                        lst.pop(-1)
-                        for i in lst:
-                            show(i[0],i[1],(0,155,0),0)
-                            show(i[0],i[1],(255,255,255),3)
-                        mousepress('Go!',x_Window_size-100,5+(N+1)*h,80,20,(255,0,0),(200,0,0),(255,255,255),15)
-                    else:
-                        font = pygame.font.SysFont("comicsansms", int(y_Window_size/10))
-                        text = font.render("No path found", True, (255,255,255))
-                        screen.blit(text,((x_Window_size/2) - text.get_width() // 2, (y_Window_size/2) - text.get_height() // 2))
-                        pygame.display.update()
-                elif x_Window_size-20 >= pos[0] >= x_Window_size-100 and (N+1)*h+50 >= pos[1] >=(N+1)*h+30:
-                    pygame.quit()
-                    loop=False
-            elif pygame.mouse.get_pressed()[2]:
-                pos = pygame.mouse.get_pos()
-                x,y=int(pos[0]//w),int(pos[1]//h)
-                if len(point)<2:
-                    show(x,y,(255,255,255),0)
-                    point.append((x,y))
+            elif event.type == pygame.QUIT:
+                pygame.quit()
+                loop=False
+                mloop=False 
